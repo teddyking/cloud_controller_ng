@@ -8,7 +8,6 @@ module VCAP::CloudController::Presenters::V3
     def to_hash
       {
         guid: deployment.guid,
-        state: deployment.state,
         status: {
           value: deployment.status_value,
           reason: deployment.status_reason,
