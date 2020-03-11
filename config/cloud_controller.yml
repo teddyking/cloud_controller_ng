@@ -392,3 +392,4 @@ locket:
 threadpool_size: 20
 
 default_app_lifecycle: buildpack
+custom_metric_tags: false

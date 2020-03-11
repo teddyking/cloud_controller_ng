@@ -60,6 +60,7 @@ module VCAP::CloudController
             host_fingerprint: ssh_key.fingerprint
           })
         end
+
         {
           process_guid:                     Diego::ProcessGuid.from_process(process),
           instances:                        process.desired_instances,
@@ -72,19 +73,7 @@ module VCAP::CloudController
           log_source:                       LRP_LOG_SOURCE,
           log_guid:                         process.app.guid,
           metrics_guid:                     process.app.guid,
-          metric_tags:                      {
-            'source_id' => METRIC_TAG_VALUE.new(static: process.app.guid),
-            'process_id' => METRIC_TAG_VALUE.new(static: process.guid),
-            'process_type' => METRIC_TAG_VALUE.new(static: process.type),
-            'process_instance_id' => METRIC_TAG_VALUE.new(dynamic: METRIC_TAG_VALUE::DynamicValue::INSTANCE_GUID),
-            'instance_id' => METRIC_TAG_VALUE.new(dynamic: METRIC_TAG_VALUE::DynamicValue::INDEX),
-            'organization_id' => METRIC_TAG_VALUE.new(static: process.organization.guid),
-            'space_id' => METRIC_TAG_VALUE.new(static: process.space.guid),
-            'app_id' => METRIC_TAG_VALUE.new(static: process.app.guid),
-            'organization_name' => METRIC_TAG_VALUE.new(static: process.organization.name),
-            'space_name' => METRIC_TAG_VALUE.new(static: process.space.name),
-            'app_name' => METRIC_TAG_VALUE.new(static: process.app.name),
-          },
+          metric_tags:                      metric_tags(process),
           annotation:                       process.updated_at.to_f.to_s,
           egress_rules:                     Diego::EgressRules.new.running_protobuf_rules(process),
           cached_dependencies:              desired_lrp_builder.cached_dependencies,
@@ -109,6 +98,32 @@ module VCAP::CloudController
           image_username:                   process.desired_droplet.docker_receipt_username,
           image_password:                   process.desired_droplet.docker_receipt_password,
         }.compact
+      end
+
+      def metric_tags(process)
+        tags = {
+          'source_id' => METRIC_TAG_VALUE.new(static: process.app.guid),
+          'process_id' => METRIC_TAG_VALUE.new(static: process.guid),
+          'process_type' => METRIC_TAG_VALUE.new(static: process.type),
+          'process_instance_id' => METRIC_TAG_VALUE.new(dynamic: METRIC_TAG_VALUE::DynamicValue::INSTANCE_GUID),
+          'instance_id' => METRIC_TAG_VALUE.new(dynamic: METRIC_TAG_VALUE::DynamicValue::INDEX),
+          'organization_id' => METRIC_TAG_VALUE.new(static: process.organization.guid),
+          'space_id' => METRIC_TAG_VALUE.new(static: process.space.guid),
+          'app_id' => METRIC_TAG_VALUE.new(static: process.app.guid),
+          'organization_name' => METRIC_TAG_VALUE.new(static: process.organization.name),
+          'space_name' => METRIC_TAG_VALUE.new(static: process.space.name),
+          'app_name' => METRIC_TAG_VALUE.new(static: process.app.name),
+        }
+
+        if Config.config.get(:custom_metric_tags)
+          custom_tag_labels = process.app.labels.select { |label|
+            label.key_prefix == 'metric.tag.cloudfoundry.org' && !tags.key?(label.key_name)
+          }
+          custom_tag_labels.each do |label|
+            tags[label.key_name] = METRIC_TAG_VALUE.new(static: label.value)
+          end
+        end
+        tags
       end
 
       def routing_info
