@@ -6,6 +6,7 @@ require 'repositories/route_event_repository'
 require 'repositories/user_event_repository'
 require 'kubernetes/kpack_client'
 require 'kubernetes/route_crd_client'
+require 'kubernetes/service_catalog_client'
 require 'cloud_controller/rest_controller/object_renderer'
 require 'cloud_controller/rest_controller/paginated_collection_renderer'
 require 'cloud_controller/upload_handler'
@@ -378,6 +379,18 @@ module CloudController
       })
 
       Kubernetes::KpackClient.new(kube_client)
+    end
+
+    def service_catalog_client
+      kubernetes_config = VCAP::CloudController::Config.config.get(:kubernetes)
+      kube_client = Kubernetes::KubeClientBuilder.build({
+        api_group_url: "#{kubernetes_config[:host_url]}/apis/servicecatalog.k8s.io",
+        version: 'v1beta1',
+        service_account_token: File.open(kubernetes_config[:service_account][:token_file]).read,
+        ca_crt: File.open(kubernetes_config[:ca_file]).read
+      })
+
+      Kubernetes::ServiceCatalogClient.new(kube_client)
     end
 
     def route_crd_client

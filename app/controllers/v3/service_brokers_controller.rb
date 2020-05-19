@@ -11,15 +11,29 @@ class ServiceBrokersController < ApplicationController
     message = ServiceBrokersListMessage.from_params(query_params)
     invalid_param!(message.errors.full_messages) unless message.valid?
 
-    dataset = if permission_queryer.can_read_globally?
-                ServiceBrokerListFetcher.new.fetch(message: message)
-              else
-                ServiceBrokerListFetcher.new.fetch(message: message, permitted_space_guids: permission_queryer.readable_secret_space_guids)
-              end
+    p "xxxxx BEGIN EXPERIMENT xxxxx"
+    client = CloudController::DependencyLocator.instance.service_catalog_client
+    brokers = client.get_brokers
+    p brokers
+    p "xxxxx END EXPERIMENT xxxxx"
+
+    dataset =  brokers.map do |b|
+      VCAP::CloudController::ServiceBroker.new(
+        name: b['metadata'][:name],
+        broker_url: b['spec'][:url],
+      )
+    end
+
+    # dataset = if permission_queryer.can_read_globally?
+    #             ServiceBrokerListFetcher.new.fetch(message: message)
+    #           else
+    #             ServiceBrokerListFetcher.new.fetch(message: message, permitted_space_guids: permission_queryer.readable_secret_space_guids)
+    #           end
 
     presenter = Presenters::V3::PaginatedListPresenter.new(
       presenter: Presenters::V3::ServiceBrokerPresenter,
-      paginated_result: SequelPaginator.new.get_page(dataset, message.try(:pagination_options)),
+      paginated_result: ListPaginator.new.get_page(dataset, message.try(:pagination_options)),
+      # paginated_result: SequelPaginator.new.get_page(dataset, message.try(:pagination_options)),
       message: message,
       path: '/v3/service_brokers',
     )
