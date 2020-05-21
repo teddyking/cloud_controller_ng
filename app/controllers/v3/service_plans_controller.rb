@@ -42,7 +42,7 @@ class ServicePlansController < ApplicationController
     client = CloudController::DependencyLocator.instance.service_catalog_client
 
     dataset =  client.get_plans.map do |plan|
-      service_class = client.get_class(plan.spec.name)
+      # service_class = client.get_class(plan.spec.name)
 
       OpenStruct.new(
         guid: "",

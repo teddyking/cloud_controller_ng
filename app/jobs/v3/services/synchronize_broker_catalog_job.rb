@@ -5,9 +5,10 @@ module VCAP::CloudController
     class SynchronizeBrokerCatalogJob < VCAP::CloudController::Jobs::CCJob
       attr_reader :warnings
 
-      def initialize(name:, url:)
+      def initialize(name:, url:, space_guid:)
         @broker_name = name
         @broker_url = url
+        @space_guid = space_guid
       end
 
       def perform
@@ -16,18 +17,30 @@ module VCAP::CloudController
         client = CloudController::DependencyLocator.instance.service_catalog_client
 
         b = Kubeclient::Resource.new
+
         b.metadata = {}
-        b.metadata.name = @broker_name
+        b.metadata.annotations = {}
         b.spec = {}
         b.spec.authInfo = {}
         b.spec.authInfo.basic = {}
         b.spec.authInfo.basic.secretRef = {}
 
+        b.metadata.name = @broker_name
+
         b.spec.url = @broker_url
         b.spec.authInfo.basic.secretRef.name = @broker_name
-        b.spec.authInfo.basic.secretRef.namespace = "service-catalog"
 
-        client.create_broker(b)
+        if @space_guid
+          # space-scoped broker
+          b.metadata.namespace = "cf-ns-" + @space_guid
+          b.metadata.annotations['cloudfoundry.org/space_guid'] = @space_guid
+          client.create_broker(b)
+        else
+          # global broker
+          b.spec.authInfo.basic.secretRef.namespace = "service-catalog"
+          client.create_cluster_broker(b)
+        end
+
       end
 
       def job_name_in_configuration

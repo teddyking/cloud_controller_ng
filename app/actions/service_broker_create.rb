@@ -27,13 +27,21 @@ module VCAP::CloudController
         core_v1_client = CloudController::DependencyLocator.instance.core_v1_client
 
         s = Kubeclient::Resource.new
-        s.metadata = {}
-        s.metadata.name = message.name
-        s.metadata.namespace = "service-catalog"
-        s.data = {}
-        s.data.username = Base64.encode64(message.username)
-        s.data.password = Base64.encode64(message.password)
 
+        s.metadata = {}
+        s.data = {}
+
+        s.metadata.name = params[:name]
+        s.metadata.namespace = "service-catalog"
+
+        s.data.username = Base64.encode64(params[:auth_username])
+        s.data.password = Base64.encode64(params[:auth_password])
+
+        if params[:space_guid]
+          s.metadata.namespace = "cf-ns-" + params[:space_guid]
+        end
+
+        # create the secret in k8s here to avoid storing creds in job table in CCDB
         begin
           core_v1_client.create_secret(s)
         rescue => e
@@ -48,9 +56,11 @@ module VCAP::CloudController
         # service_event_repository.record_broker_event_with_request(:create, broker, message.audit_hash)
 
         synchronization_job = SynchronizeBrokerCatalogJob.new(
-          name: message.name,
-          url: message.url,
+          name: params[:name],
+          url: params[:broker_url],
+          space_guid: params[:space_guid],
         )
+
         pollable_job = Jobs::Enqueuer.new(synchronization_job, queue: Jobs::Queues.generic).enqueue_pollable
         # end
 

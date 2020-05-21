@@ -12,26 +12,31 @@ class ServiceBrokersController < ApplicationController
     invalid_param!(message.errors.full_messages) unless message.valid?
 
     client = CloudController::DependencyLocator.instance.service_catalog_client
-    brokers = client.get_brokers
+
+    brokers = if permission_queryer.can_read_globally?
+                # ServiceBrokerListFetcher.new.fetch(message: message)
+                client.get_all_brokers
+              else
+                # ServiceBrokerListFetcher.new.fetch(message: message, permitted_space_guids: permission_queryer.readable_secret_space_guids)
+                client.get_brokers(permission_queryer.readable_secret_space_guids)
+              end
 
     dataset =  brokers.map do |b|
+      labels = {}
+      annotations = {}
+      space_guid = nil
+
       OpenStruct.new(
-        guid: "",
-        name: b['metadata'][:name],
-        broker_url: b['spec'][:url],
-        created_at: "",
+        guid: b.metadata.uid,
+        name: b.metadata.name,
+        broker_url: b.spec.url,
+        created_at: b.metadata.creationTimestamp,
         updated_at: "",
-        labels: {},
-        annotations: {},
-        space_guid: nil,
+        labels: labels,
+        annotations: annotations,
+        space_guid: space_guid,
       )
     end
-
-    # dataset = if permission_queryer.can_read_globally?
-    #             ServiceBrokerListFetcher.new.fetch(message: message)
-    #           else
-    #             ServiceBrokerListFetcher.new.fetch(message: message, permitted_space_guids: permission_queryer.readable_secret_space_guids)
-    #           end
 
     presenter = Presenters::V3::PaginatedListPresenter.new(
       presenter: Presenters::V3::ServiceBrokerPresenter,
