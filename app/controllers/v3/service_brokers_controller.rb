@@ -11,16 +11,19 @@ class ServiceBrokersController < ApplicationController
     message = ServiceBrokersListMessage.from_params(query_params)
     invalid_param!(message.errors.full_messages) unless message.valid?
 
-    p "xxxxx BEGIN EXPERIMENT xxxxx"
     client = CloudController::DependencyLocator.instance.service_catalog_client
     brokers = client.get_brokers
-    p brokers
-    p "xxxxx END EXPERIMENT xxxxx"
 
     dataset =  brokers.map do |b|
-      VCAP::CloudController::ServiceBroker.new(
+      OpenStruct.new(
+        guid: "",
         name: b['metadata'][:name],
         broker_url: b['spec'][:url],
+        created_at: "",
+        updated_at: "",
+        labels: {},
+        annotations: {},
+        space_guid: nil,
       )
     end
 

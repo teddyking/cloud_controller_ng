@@ -79,6 +79,7 @@ module VCAP::CloudController
               href: url_builder.build_url(path: "/v3/service_brokers/#{service_offering.service_broker.guid}")
             }
           }
+
         end
 
         def build_relationships

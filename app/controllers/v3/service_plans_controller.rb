@@ -39,26 +39,62 @@ class ServicePlansController < ApplicationController
     message = ServicePlansListMessage.from_params(query_params)
     invalid_param!(message.errors.full_messages) unless message.valid?
 
-    dataset = if !current_user
-                ServicePlanListFetcher.new.fetch(message)
-              elsif permission_queryer.can_read_globally?
-                ServicePlanListFetcher.new.fetch(message, omniscient: true)
-              else
-                ServicePlanListFetcher.new.fetch(
-                  message,
-                  readable_org_guids: permission_queryer.readable_org_guids,
-                  readable_space_guids: permission_queryer.readable_space_scoped_space_guids,
-                )
-              end
+    client = CloudController::DependencyLocator.instance.service_catalog_client
+
+    dataset =  client.get_plans.map do |plan|
+      service_class = client.get_class(plan.spec.name)
+
+      OpenStruct.new(
+        guid: "",
+        service: OpenStruct.new(
+          guid: "",
+          service_broker: OpenStruct.new(
+            space_guid: "",
+          ),
+        ),
+        name: plan.spec.externalName,
+        created_at: "",
+        updated_at: "",
+        space_guid: nil,
+        visibility_type: "public",
+        active?: true,
+        free: true,
+        description: plan.spec.description,
+        extra: "{}",
+        maintenance_info: {},
+        unique_id: "",
+        maximum_polling_duration: 10,
+        bindable?: true,
+        plan_updateable?: true,
+        create_instance_schema: "{}",
+        update_instance_schema: "{}",
+        create_binding_schema: "{}",
+        labels: {},
+        annotations: {},
+      )
+    end
+
+
+    # dataset = if !current_user
+    #             ServicePlanListFetcher.new.fetch(message)
+    #           elsif permission_queryer.can_read_globally?
+    #             ServicePlanListFetcher.new.fetch(message, omniscient: true)
+    #           else
+    #             ServicePlanListFetcher.new.fetch(
+    #               message,
+    #               readable_org_guids: permission_queryer.readable_org_guids,
+    #               readable_space_guids: permission_queryer.readable_space_scoped_space_guids,
+    #             )
+    #           end
 
     decorators = []
-    decorators << IncludeServicePlanSpaceOrganizationDecorator if IncludeServicePlanSpaceOrganizationDecorator.match?(message.include)
-    decorators << IncludeServicePlanServiceOfferingDecorator if IncludeServicePlanServiceOfferingDecorator.match?(message.include)
-    decorators << FieldServicePlanServiceBrokerDecorator.new(message.fields) if FieldServicePlanServiceBrokerDecorator.match?(message.fields)
+    # decorators << IncludeServicePlanSpaceOrganizationDecorator if IncludeServicePlanSpaceOrganizationDecorator.match?(message.include)
+    # decorators << IncludeServicePlanServiceOfferingDecorator if IncludeServicePlanServiceOfferingDecorator.match?(message.include)
+    # decorators << FieldServicePlanServiceBrokerDecorator.new(message.fields) if FieldServicePlanServiceBrokerDecorator.match?(message.fields)
 
     presenter = Presenters::V3::PaginatedListPresenter.new(
       presenter: Presenters::V3::ServicePlanPresenter,
-      paginated_result: SequelPaginator.new.get_page(dataset, message.try(:pagination_options)),
+      paginated_result: ListPaginator.new.get_page(dataset, message.try(:pagination_options)),
       message: message,
       path: '/v3/service_plans',
       decorators: decorators

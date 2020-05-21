@@ -1,4 +1,5 @@
 require 'jobs/v3/services/synchronize_broker_catalog_job'
+require 'base64'
 
 module VCAP::CloudController
   module V3
@@ -23,16 +24,35 @@ module VCAP::CloudController
           state: ServiceBrokerStateEnum::SYNCHRONIZING
         }
 
-        pollable_job = nil
-        ServiceBroker.db.transaction do
-          broker = ServiceBroker.create(params)
-          MetadataUpdate.update(broker, message)
+        core_v1_client = CloudController::DependencyLocator.instance.core_v1_client
 
-          service_event_repository.record_broker_event_with_request(:create, broker, message.audit_hash)
+        s = Kubeclient::Resource.new
+        s.metadata = {}
+        s.metadata.name = message.name
+        s.metadata.namespace = "service-catalog"
+        s.data = {}
+        s.data.username = Base64.encode64(message.username)
+        s.data.password = Base64.encode64(message.password)
 
-          synchronization_job = SynchronizeBrokerCatalogJob.new(broker.guid)
-          pollable_job = Jobs::Enqueuer.new(synchronization_job, queue: Jobs::Queues.generic).enqueue_pollable
+        begin
+          core_v1_client.create_secret(s)
+        rescue => e
+          p "create secret error: ", e
         end
+
+        # pollable_job = nil
+        # ServiceBroker.db.transaction do
+        #   broker = ServiceBroker.create(params)
+        #   MetadataUpdate.update(broker, message)
+
+        # service_event_repository.record_broker_event_with_request(:create, broker, message.audit_hash)
+
+        synchronization_job = SynchronizeBrokerCatalogJob.new(
+          name: message.name,
+          url: message.url,
+        )
+        pollable_job = Jobs::Enqueuer.new(synchronization_job, queue: Jobs::Queues.generic).enqueue_pollable
+        # end
 
         { pollable_job: pollable_job }
       rescue Sequel::ValidationFailed => e
