@@ -20,24 +20,62 @@ class ServiceOfferingsController < ApplicationController
     message = ServiceOfferingsListMessage.from_params(query_params)
     invalid_param!(message.errors.full_messages) unless message.valid?
 
-    dataset = if !current_user
-                ServiceOfferingListFetcher.new.fetch_public(message)
-              elsif permission_queryer.can_read_globally?
-                ServiceOfferingListFetcher.new.fetch(message)
-              else
-                ServiceOfferingListFetcher.new.fetch_visible(
-                  message,
-                  permission_queryer.readable_org_guids,
-                  permission_queryer.readable_space_scoped_space_guids,
-                )
-              end
+    client = CloudController::DependencyLocator.instance.service_catalog_client
+
+    service_offerings = if !current_user
+                          ServiceOfferingListFetcher.new.fetch_public(message)
+                        elsif permission_queryer.can_read_globally?
+                          # ServiceOfferingListFetcher.new.fetch(message)
+                          client.get_all_service_classes
+                        else
+                          ServiceOfferingListFetcher.new.fetch_visible(
+                            message,
+                            permission_queryer.readable_org_guids,
+                            permission_queryer.readable_space_scoped_space_guids,
+                          )
+                        end
+
+    dataset =  service_offerings.map do |s|
+      labels = {}
+      annotations = {}
+      space_guid = nil
+      shareable = false
+
+      if s.spec.externalMetadata
+        if s.spec.externalMetadata.shareable
+          shareable = true
+        end
+      end
+
+      OpenStruct.new(
+        guid: s.metadata.uid,
+        label: s.spec.externalName,
+        description: s.spec.description,
+        active: true, # TODO
+        tags: s.spec.tags,
+        requires: {}, # TODO
+        created_at: s.metadata.creationTimestamp,
+        updated_at: s.metadata.creationTimestamp,
+        extra: "{\"shareable\": #{shareable}, \"documentation_url\": \"https://github.com\"}",
+        unique_id: s.metadata.name, #TODO
+        plan_updateable: s.spec.planUpdatable,
+        bindable: s.spec.bindable,
+        instances_retrievable: true, #TODO
+        bindings_retrievable: s.spec.bindingRetrievable,
+        allow_context_updates: true, #TODO
+        service_broker: OpenStruct.new(guid: ""),
+        labels: {},
+        annotations: {},
+      )
+
+    end
 
     decorators = []
-    decorators << FieldServiceOfferingServiceBrokerDecorator.new(message.fields) if FieldServiceOfferingServiceBrokerDecorator.match?(message.fields)
+    #decorators << FieldServiceOfferingServiceBrokerDecorator.new(message.fields) if FieldServiceOfferingServiceBrokerDecorator.match?(message.fields)
 
     presenter = Presenters::V3::PaginatedListPresenter.new(
       presenter: Presenters::V3::ServiceOfferingPresenter,
-      paginated_result: SequelPaginator.new.get_page(dataset, message.try(:pagination_options)),
+      paginated_result: ListPaginator.new.get_page(dataset, message.try(:pagination_options)),
       message: message,
       path: '/v3/service_offerings',
       decorators: decorators

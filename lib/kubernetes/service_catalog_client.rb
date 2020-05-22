@@ -31,5 +31,9 @@ module Kubernetes
     def get_plans
       @client.get_cluster_service_plans
     end
+
+    def get_all_service_classes
+      @client.get_cluster_service_classes + @client.get_service_classes
+    end
   end
 end
