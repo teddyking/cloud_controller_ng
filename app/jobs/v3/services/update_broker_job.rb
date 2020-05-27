@@ -51,16 +51,17 @@ module VCAP::CloudController
         end
 
         def perform
-          ServiceBroker.db.transaction do
-            broker.update(update_params)
+          # ServiceBroker.db.transaction do
+          #   broker.update(update_params)
 
-            @warnings = @catalog_updater.refresh
+          #   @warnings = @catalog_updater.refresh
 
-            MetadataUpdate.update(broker, ServiceBrokerUpdateMetadataMessage.new(build_metadata_request_params))
-            broker.update(state: ServiceBrokerStateEnum::AVAILABLE)
-          end
+          #   MetadataUpdate.update(broker, ServiceBrokerUpdateMetadataMessage.new(build_metadata_request_params))
+          #   broker.update(state: ServiceBrokerStateEnum::AVAILABLE)
+          # end
 
-          @warnings
+          # @warnings
+          [] # empty array of warnings
         rescue => e
           begin
             broker.update(state: previous_broker_state)

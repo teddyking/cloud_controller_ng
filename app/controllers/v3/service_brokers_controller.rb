@@ -84,6 +84,31 @@ class ServiceBrokersController < ApplicationController
     unprocessable!(e.message)
   end
 
+  def put
+    message = ServiceBrokerUpdateMessage.new(hashed_params[:body])
+    unprocessable!(message.errors.full_messages) unless message.valid?
+
+    service_broker = VCAP::CloudController::ServiceBroker.find(guid: hashed_params[:guid])
+    # TODO: update this to create the broker if it's not found
+    broker_not_found! unless service_broker
+
+    if service_broker.space_guid
+      space = service_broker.space
+      unprocessable_space! unless space && permission_queryer.can_read_from_space?(space.guid, space.organization_guid)
+      unauthorized! unless permission_queryer.can_write_space_scoped_service_broker?(space.guid)
+    else
+      unauthorized! unless permission_queryer.can_write_global_service_broker?
+    end
+
+    service_event_repository = VCAP::CloudController::Repositories::ServiceEventRepository::WithUserActor.new(user_audit_info)
+    service_broker_update = VCAP::CloudController::V3::ServiceBrokerUpdate.new(service_broker, service_event_repository)
+    result = service_broker_update.update(message)
+
+    head :accepted, 'Location' => url_builder.build_url(path: "/v3/jobs/#{result[:pollable_job].guid}")
+  rescue VCAP::CloudController::V3::ServiceBrokerUpdate::InvalidServiceBroker => e
+    unprocessable!(e.message)
+  end
+
   def destroy
     service_broker = VCAP::CloudController::ServiceBroker.find(guid: hashed_params[:guid])
     broker_not_found! unless service_broker

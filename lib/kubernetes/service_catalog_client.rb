@@ -10,8 +10,16 @@ module Kubernetes
       @client.create_service_broker(*args)
     end
 
+    def get_broker(name, namespace)
+      @client.get_service_brokers(name: name, namespace: namespace).first
+    end
+
     def create_cluster_broker(*args)
       @client.create_cluster_service_broker(*args)
+    end
+
+    def get_cluster_broker(name)
+      @client.get_cluster_service_brokers(name: name).first
     end
 
     def get_brokers(namespaces)

@@ -23,13 +23,13 @@ module VCAP::CloudController
           state: ServiceBrokerStateEnum::SYNCHRONIZING
         }
 
-        # create crd
-        create_crd(params)
-
         pollable_job = nil
         ServiceBroker.db.transaction do
           broker = ServiceBroker.create(params)
           MetadataUpdate.update(broker, message)
+
+          # create crd
+          create_crd(params, broker.guid)
 
           service_event_repository.record_broker_event_with_request(:create, broker, message.audit_hash)
 
@@ -55,7 +55,7 @@ module VCAP::CloudController
         VCAP::CloudController::Config.config.get(:volume_services_enabled)
       end
 
-      def create_crd(params)
+      def create_crd(params, guid)
         core_v1_client = CloudController::DependencyLocator.instance.core_v1_client
         srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
 
@@ -77,10 +77,10 @@ module VCAP::CloudController
         end
 
         begin
-          p "creating k8s secret with name #{params[:name]}"
+          p "K8SDEBUG: creating k8s secret with name #{params[:name]}"
           core_v1_client.create_secret(s)
         rescue => e
-          p "create secret error: ", e
+          p "K8SDEBUG: create secret error: ", e
         end
 
         # create the broker
@@ -92,6 +92,7 @@ module VCAP::CloudController
         b.spec.authInfo.basic.secretRef = {}
 
         b.metadata.name = params[:name]
+        b.metadata.annotations['cloudfoundry.org/service_broker_guid'] = guid
 
         b.spec.url = params[:broker_url]
         b.spec.authInfo.basic.secretRef.name = params[:name]
@@ -102,17 +103,17 @@ module VCAP::CloudController
             b.metadata.namespace = params[:space_guid]
             b.metadata.annotations['cloudfoundry.org/space_guid'] = params[:space_guid]
 
-            p "creating service cat broker with name #{params[:name]}"
+            p "K8SDEBUG: creating service cat broker with name #{params[:name]}"
             srv_cat_client.create_broker(b)
           else
             # global broker
             b.spec.authInfo.basic.secretRef.namespace = "service-catalog"
 
-            p "creating service cat cluster broker with name #{params[:name]}"
+            p "K8SDEBUG: creating service cat cluster broker with name #{params[:name]}"
             srv_cat_client.create_cluster_broker(b)
           end
         rescue => e
-          p "create broker crd error: ", e
+          p "K8SDEBUG: create broker crd error: ", e
         end
       end
     end

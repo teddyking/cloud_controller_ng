@@ -10,7 +10,7 @@ module VCAP::CloudController
   class ServiceBrokerUpdateMessage < MetadataBaseMessage
     include AuthenticationMessageMixin
 
-    register_allowed_keys [:name, :url, :authentication]
+    register_allowed_keys [:name, :url, :authentication, :cache_id]
 
     validates :name, string: true, allow_nil: true
     validate :validate_name

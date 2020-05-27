@@ -185,6 +185,7 @@ Rails.application.routes.draw do
   post '/service_brokers', to: 'service_brokers#create'
   patch '/service_brokers/:guid', to: 'service_brokers#update'
   delete '/service_brokers/:guid', to: 'service_brokers#destroy'
+  put '/service_brokers/:guid', to: 'service_brokers#put'
 
   # service_offerings
   get '/service_offerings', to: 'service_offerings#index'

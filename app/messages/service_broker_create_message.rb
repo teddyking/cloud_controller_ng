@@ -9,7 +9,7 @@ require 'utils/hash_utils'
 module VCAP::CloudController
   class ServiceBrokerCreateMessage < MetadataBaseMessage
     include AuthenticationMessageMixin
-    register_allowed_keys [:name, :url, :authentication, :relationships]
+    register_allowed_keys [:name, :url, :authentication, :relationships, :cache_id]
 
     def self.relationships_requested?
       @relationships_requested ||= proc { |a| a.requested?(:relationships) }
