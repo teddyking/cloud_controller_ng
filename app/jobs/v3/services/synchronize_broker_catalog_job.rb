@@ -46,9 +46,10 @@ module VCAP::CloudController
         def perform
           broker.update(state: ServiceBrokerStateEnum::SYNCHRONIZING)
 
-          warnings = @catalog_updater.refresh
+          #warnings = @catalog_updater.refresh
+          warnings = []
 
-          broker.update(state: ServiceBrokerStateEnum::AVAILABLE)
+          #broker.update(state: ServiceBrokerStateEnum::AVAILABLE)
 
           warnings
         rescue => e
