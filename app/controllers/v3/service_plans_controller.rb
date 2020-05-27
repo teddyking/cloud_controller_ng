@@ -81,6 +81,37 @@ class ServicePlansController < ApplicationController
     render :ok, json: presenter.to_json
   end
 
+  def put
+    p "K8SDEBUG: PUTing service_plan with guid: #{hashed_params[:guid]}"
+
+    # fetch service plan from ccdb, based on guid
+    service_plan = ServicePlanFetcher.fetch(hashed_params[:guid])
+
+    srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+    service_plan_crd = srv_cat_client.get_cluster_service_plan(hashed_params[:guid])
+    p "K8SDEBUG: fetched service_plan crd: #{service_plan_crd}"
+
+    # create it in ccdb if it doesn't exist
+
+    if service_plan == nil
+      service_plan = ServicePlan.new
+      service_plan.guid = hashed_params[:guid]
+      service_plan.name = service_plan_crd.spec.externalName
+      service_plan.description = service_plan_crd.spec.description
+      service_plan.free = service_plan_crd.spec.free
+      service_plan.service = Service.dataset.first
+      service_plan.cache_id = service_plan_crd.metadata.resourceVersion
+    end
+
+    p "K8SDEBUG: saving service_plan to ccdb: #{service_plan}"
+    service_plan.save
+
+    # update it in ccdb if it does exist
+
+    presenter = Presenters::V3::ServicePlanPresenter.new(service_plan)
+    render :ok, json: presenter.to_json
+  end
+
   def destroy
     service_plan = ServicePlanFetcher.fetch(hashed_params[:guid])
     service_plan_not_found! if service_plan.nil?

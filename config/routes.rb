@@ -192,12 +192,14 @@ Rails.application.routes.draw do
   get '/service_offerings/:guid', to: 'service_offerings#show'
   patch '/service_offerings/:guid', to: 'service_offerings#update'
   delete '/service_offerings/:guid', to: 'service_offerings#destroy'
+  put '/service_offerings/:guid', to: 'service_offerings#put'
 
   # service_plans
   get '/service_plans', to: 'service_plans#index'
   get '/service_plans/:guid', to: 'service_plans#show'
   patch '/service_plans/:guid', to: 'service_plans#update'
   delete '/service_plans/:guid', to: 'service_plans#destroy'
+  put '/service_plans/:guid', to: 'service_plans#put'
 
   # service_plan_visibility
   get '/service_plans/:guid/visibility', to: 'service_plan_visibility#show'

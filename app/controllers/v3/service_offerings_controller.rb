@@ -78,6 +78,37 @@ class ServiceOfferingsController < ApplicationController
     render :ok, json: presenter.to_json
   end
 
+  def put
+    p "K8SDEBUG: PUTing service_offering with guid: #{hashed_params[:guid]}"
+
+    # fetch service offering from ccdb, based on guid
+    service_offering = ServiceOfferingFetcher.fetch(hashed_params[:guid])
+
+    srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+    service_crd = srv_cat_client.get_cluster_service_class(hashed_params[:guid])
+    p "K8SDEBUG: fetched service crd: #{service_crd}"
+
+    # create it in ccdb if it doesn't exist
+
+    if service_offering == nil
+      service_offering = Service.new
+      service_offering.guid = hashed_params[:guid]
+      service_offering.label = service_crd.spec.externalName
+      service_offering.description = service_crd.spec.description
+      service_offering.bindable = service_crd.spec.bindable
+      service_offering.service_broker = ServiceBroker.dataset.first
+      service_offering.cache_id = service_crd.metadata.resourceVersion
+    end
+
+    p "K8SDEBUG: saving service_offering to ccdb: #{service_offering}"
+    service_offering.save
+
+    # update it in ccdb if it does exist
+
+    presenter = Presenters::V3::ServiceOfferingPresenter.new(service_offering)
+    render :ok, json: presenter.to_json
+  end
+
   def destroy
     message = PurgeMessage.from_params(query_params)
     invalid_param!(message.errors.full_messages) unless message.valid?

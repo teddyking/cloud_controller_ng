@@ -32,12 +32,28 @@ module Kubernetes
       brokers
     end
 
+    def get_cluster_service_class(name)
+      get_services.find do |s|
+        s.metadata.name == name
+      end
+    end
+
+    def get_cluster_service_plan(name)
+      get_plans.find do |p|
+        p.metadata.name == name
+      end
+    end
+
     def get_all_brokers(*args)
       @client.get_cluster_service_brokers + @client.get_service_brokers
     end
 
     def get_plans
       @client.get_cluster_service_plans
+    end
+
+    def get_services
+      @client.get_cluster_service_classes
     end
   end
 end

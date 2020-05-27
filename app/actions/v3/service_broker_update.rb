@@ -44,6 +44,7 @@ module VCAP::CloudController
 
           service_event_repository.record_broker_event_with_request(:update, broker, message.audit_hash)
 
+          # determine if the broker (and subsequently services/plans) is up-to-date, if not fetch all from k8s
           conditional_bust(broker, cache_id)
 
           synchronization_job = UpdateBrokerJob.new(update_request.guid, broker.guid, previous_broker_state)
