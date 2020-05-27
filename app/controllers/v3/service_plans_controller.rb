@@ -83,30 +83,45 @@ class ServicePlansController < ApplicationController
 
   def put
     p "K8SDEBUG: PUTing service_plan with guid: #{hashed_params[:guid]}"
+    p "K8SDEBUG: hashed_params = #{hashed_params}"
 
-    # fetch service plan from ccdb, based on guid
-    service_plan = ServicePlanFetcher.fetch(hashed_params[:guid])
+    broker_guid = hashed_params[:body][:broker_guid]
+    service_guid = hashed_params[:body][:service_guid]
+    space_guid = hashed_params[:body][:space_guid]
 
-    srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
-    service_plan_crd = srv_cat_client.get_cluster_service_plan(hashed_params[:guid])
-    p "K8SDEBUG: fetched service_plan crd: #{service_plan_crd}"
-
-    # create it in ccdb if it doesn't exist
+    service_broker = ServiceBroker.find(guid: broker_guid)
+    service = Service.find(guid: service_guid, service_broker_id: service_broker.id)
+    service_plan = ServicePlan.find(guid: hashed_params[:guid], service_id: service.id)
 
     if service_plan == nil
+      p "K8SDEBUG: service_plan nil in CCDB"
+
+      srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+
+      service_plan_crd = nil
+      if space_guid != nil
+        p "K8SDEBUG: fetching namespace-scoped service plan"
+        service_plan_crd = srv_cat_client.get_service_plan(hashed_params[:guid], space_guid)
+      else
+        p "K8SDEBUG: fetching global-scoped service plan"
+        service_plan_crd = srv_cat_client.get_cluster_service_plan(hashed_params[:guid])
+      end
+
+      p "K8SDEBUG: fetched service plan crd: #{service_plan_crd.metadata.name}"
+
       service_plan = ServicePlan.new
       service_plan.guid = hashed_params[:guid]
       service_plan.name = service_plan_crd.spec.externalName
       service_plan.description = service_plan_crd.spec.description
       service_plan.free = service_plan_crd.spec.free
-      service_plan.service = Service.dataset.first
+      service_plan.service = service
       service_plan.cache_id = service_plan_crd.metadata.resourceVersion
     end
 
     p "K8SDEBUG: saving service_plan to ccdb: #{service_plan}"
     service_plan.save
 
-    # update it in ccdb if it does exist
+    # TODO: update it in ccdb if it does exist
 
     presenter = Presenters::V3::ServicePlanPresenter.new(service_plan)
     render :ok, json: presenter.to_json

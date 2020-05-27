@@ -11,7 +11,10 @@ module Kubernetes
     end
 
     def get_broker(name, namespace)
-      @client.get_service_brokers(name: name, namespace: namespace).first
+      @client.get_service_brokers.find do |b|
+        b.metadata.name == name &&
+        b.metadata.namespace == namespace
+      end
     end
 
     def create_cluster_broker(*args)
@@ -19,41 +22,51 @@ module Kubernetes
     end
 
     def get_cluster_broker(name)
-      @client.get_cluster_service_brokers(name: name).first
+      @client.get_cluster_service_brokers.find do |b|
+        b.metadata.name == name
+      end
     end
 
-    def get_brokers(namespaces)
-      brokers = []
-
-      namespaces.each do |n|
-        brokers = brokers + @client.get_service_brokers(namespace: n)
+    def get_service_class(name, namespace)
+      @client.get_service_classes.find do |s|
+        s.metadata.name == name &&
+        s.metadata.namespace == namespace
       end
-
-      brokers
     end
 
     def get_cluster_service_class(name)
-      get_services.find do |s|
+      @client.get_cluster_service_classes.find do |s|
         s.metadata.name == name
       end
     end
 
+    def get_service_plan(name, namespace)
+      @client.get_service_plans.find do |p|
+        p.metadata.name == name &&
+        p.metadata.namespace == namespace
+      end
+    end
+
     def get_cluster_service_plan(name)
-      get_plans.find do |p|
+      @client.get_cluster_service_plans.find do |p|
         p.metadata.name == name
       end
     end
 
-    def get_all_brokers(*args)
-      @client.get_cluster_service_brokers + @client.get_service_brokers
-    end
+    def get_broker(name)
+      broker = nil
 
-    def get_plans
-      @client.get_cluster_service_plans
-    end
+      broker = @client.get_cluster_service_brokers.find do |b|
+        b.metadata.name == brokerName
+      end
 
-    def get_services
-      @client.get_cluster_service_classes
+      if broker.nil?
+        broker = @client.get_service_brokers.find do |b|
+          b.metadata.name == brokerName
+        end
+      end
+
+      broker
     end
   end
 end
