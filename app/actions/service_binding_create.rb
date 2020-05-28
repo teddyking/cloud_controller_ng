@@ -38,6 +38,11 @@ module VCAP::CloudController
       )
       raise InvalidServiceBinding.new(binding.errors.full_messages.join(' ')) unless binding.valid?
 
+      create_crd(binding)
+      binding.save
+
+      return # return early
+
       client = VCAP::Services::ServiceClientProvider.provide(instance: service_instance)
 
       binding_result = request_binding_from_broker(client, binding, message.parameters, accepts_incomplete)
@@ -68,6 +73,28 @@ module VCAP::CloudController
     end
 
     private
+
+    def create_crd(service_binding)
+      srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+
+      b = Kubeclient::Resource.new
+
+      b.metadata = {}
+      b.spec = {}
+
+      b.metadata.name = service_binding.name
+      b.metadata.namespace = service_binding.service_instance.space.guid
+
+      b.spec.instanceRef = {}
+      b.spec.instanceRef.name = service_binding.service_instance.guid
+
+      begin
+        p "K8SDEBUG: creating service binding with name #{b.metadata.namespace}/#{b.metadata.name}, instanceRef #{b.spec.instanceRef.name}"
+        srv_cat_client.create_service_binding(b)
+      rescue => e
+        p "K8SDEBUG: create binding crd error: ", e
+      end
+    end
 
     def request_binding_from_broker(client, service_binding, parameters, accepts_incomplete)
       client.bind(service_binding, arbitrary_parameters: parameters, accepts_incomplete: accepts_incomplete)
