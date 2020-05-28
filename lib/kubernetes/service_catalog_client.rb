@@ -47,6 +47,17 @@ module Kubernetes
       end
     end
 
+    def create_service_instance(instance)
+      @client.create_service_instance(instance)
+    end
+
+    def get_service_instance(name, namespace)
+      @client.get_service_instances.find do |i|
+        i.metadata.name == name &&
+        i.metadata.namespace == namespace
+      end
+    end
+
     def get_cluster_service_plan(name)
       @client.get_cluster_service_plans.find do |p|
         p.metadata.name == name

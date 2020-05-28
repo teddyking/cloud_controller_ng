@@ -111,6 +111,28 @@ class ServiceInstancesV3Controller < ApplicationController
     end
   end
 
+  def put
+    service_instance = ServiceInstance.first(guid: hashed_params[:guid])
+    resource_not_found!(:service_instance) unless service_instance && can_read_service_instance?(service_instance)
+    unauthorized! unless can_write_space?(service_instance.space)
+
+    case service_instance
+    when ManagedServiceInstance
+      message = ServiceInstanceUpdateManagedMessage.new(hashed_params[:body])
+      unprocessable!(message.errors.full_messages) unless message.valid?
+
+      service_instance = ServiceInstanceUpdate.update(service_instance, message)
+      render status: :ok, json: Presenters::V3::ServiceInstancePresenter.new(service_instance)
+    when UserProvidedServiceInstance
+      message = ServiceInstanceUpdateUserProvidedMessage.new(hashed_params[:body])
+      unprocessable!(message.errors.full_messages) unless message.valid?
+
+      service_event_repository = VCAP::CloudController::Repositories::ServiceEventRepository::WithUserActor.new(user_audit_info)
+      service_instance = ServiceInstanceUpdateUserProvided.new(service_event_repository).update(service_instance, message)
+      render status: :ok, json: Presenters::V3::ServiceInstancePresenter.new(service_instance)
+    end
+  end
+
   def share_service_instance
     FeatureFlag.raise_unless_enabled!(:service_instance_sharing)
 
