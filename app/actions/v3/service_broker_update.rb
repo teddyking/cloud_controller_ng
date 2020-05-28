@@ -29,10 +29,9 @@ module VCAP::CloudController
         p "K8SDEBUG: update service broker with params: #{params}"
         p "K8SDEBUG: ccdb service broker name: #{broker.name}"
 
-        # TODO: think about state of broker
-        #if broker.in_transitional_state?
+        # if broker.in_transitional_state?
         #  raise InvalidServiceBroker.new('Cannot update a broker when other operation is already in progress')
-        #end
+        # end
 
         pollable_job = nil
         previous_broker_state = broker.state
@@ -48,7 +47,7 @@ module VCAP::CloudController
           conditional_bust(broker, cache_id)
 
           synchronization_job = UpdateBrokerJob.new(update_request.guid, broker.guid, previous_broker_state)
-          # UpdateBrokerJob has been updated to do nothing
+          # UpdateBrokerJob has been updated to do nothing except put the state back to AVAILABLE
           pollable_job = Jobs::Enqueuer.new(synchronization_job, queue: Jobs::Queues.generic).enqueue_pollable
         end
 

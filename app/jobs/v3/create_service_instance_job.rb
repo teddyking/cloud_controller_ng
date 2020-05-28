@@ -16,30 +16,30 @@ module VCAP::CloudController
       end
 
       def perform
-        client = VCAP::Services::ServiceClientProvider.provide({ instance: service_instance })
+        # client = VCAP::Services::ServiceClientProvider.provide({ instance: service_instance })
 
-        if first_time
-          compute_maximum_duration
-          send_provision_request(client)
-          compatibility_checks
-          @first_time = false
-        end
+        # if first_time
+        #   compute_maximum_duration
+        #   send_provision_request(client)
+        #   compatibility_checks
+        #   @first_time = false
+        # end
 
-        gone! if service_instance.nil?
+        # gone! if service_instance.nil?
 
-        operation_in_progress = service_instance.last_operation.type
-        aborted! if operation_in_progress != 'create'
+        # operation_in_progress = service_instance.last_operation.type
+        # aborted! if operation_in_progress != 'create'
 
-        if service_instance.operation_in_progress?
-          fetch_last_operation(client)
-        end
+        # if service_instance.operation_in_progress?
+        #   fetch_last_operation(client)
+        # end
 
-        if service_instance.last_operation.state == 'succeeded'
-          record_event(service_instance, @arbitrary_parameters)
-          finish
-        elsif service_instance.last_operation.state == 'failed'
-          operation_failed!(service_instance.last_operation.description)
-        end
+        # if service_instance.last_operation.state == 'succeeded'
+        #   record_event(service_instance, @arbitrary_parameters)
+        #   finish
+        # elsif service_instance.last_operation.state == 'failed'
+        #   operation_failed!(service_instance.last_operation.description)
+        # end
       end
 
       def handle_timeout

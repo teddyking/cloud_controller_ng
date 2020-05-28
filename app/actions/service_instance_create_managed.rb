@@ -38,6 +38,9 @@ module VCAP::CloudController
 
         service_event_repository.record_service_instance_event(:start_create, instance, message.audit_hash)
 
+        # create crd
+        create_crd(attr)
+
         creation_job = V3::CreateServiceInstanceJob.new(
           instance.guid,
           arbitrary_parameters: message.parameters,
@@ -52,6 +55,28 @@ module VCAP::CloudController
     end
 
     private
+
+    def create_crd(attr)
+      srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+
+      instance = Kubeclient::Resource.new
+
+      instance.metadata = {}
+      instance.spec = {}
+
+      instance.metadata.name = attr[:name]
+      instance.metadata.namespace = attr[:space_guid]
+
+      instance.spec.clusterServiceClassName = attr[:service_plan].service.guid
+      instance.spec.clusterServicePlanName = attr[:service_plan].guid
+
+      begin
+        p "K8SDEBUG: creating service instance with name #{instance.metadata.namespace}/#{instance.metadata.name}, clusterServiceClassName #{instance.spec.clusterServiceClassName}, clusterServicePlanName #{instance.spec.clusterServicePlanName}"
+        srv_cat_client.create_service_instance(instance)
+      rescue => e
+        p "K8SDEBUG: create instance crd error: ", e
+      end
+    end
 
     def error!(message)
       raise InvalidManagedServiceInstance.new(message)
