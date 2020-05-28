@@ -43,6 +43,12 @@ module VCAP::CloudController
         p "K8SDEBUG: instance cachebust: bust required: updating service_instance in ccdb"
 
         service_instance.update(cache_id: service_instance_crd.metadata.resourceVersion)
+        service_instance.save_and_update_operation(
+          last_operation: {
+            state: 'succeeded',
+            description: 'succeeded',
+          }
+        )
 
         p "K8SDEBUG: instance cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{service_instance.cache_id}"
       end

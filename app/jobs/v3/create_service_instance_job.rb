@@ -40,6 +40,8 @@ module VCAP::CloudController
         # elsif service_instance.last_operation.state == 'failed'
         #   operation_failed!(service_instance.last_operation.description)
         # end
+
+        # TODO: actually implement last_opeartion logic between cf and service catalog
       end
 
       def handle_timeout
