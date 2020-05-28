@@ -2,7 +2,7 @@ require 'messages/base_message'
 
 module VCAP::CloudController
   class ServiceBindingCreateMessage < BaseMessage
-    register_allowed_keys [:type, :name, :relationships, :data]
+    register_allowed_keys [:type, :name, :relationships, :data, :cache_id]
     ALLOWED_TYPES = ['app'].freeze
 
     validates_with NoAdditionalKeysValidator, RelationshipValidator, DataValidator

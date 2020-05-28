@@ -62,6 +62,13 @@ module Kubernetes
       @client.create_service_binding(binding)
     end
 
+    def get_service_binding(name, namespace)
+      @client.get_service_bindings.find do |b|
+        b.metadata.name == name &&
+        b.metadata.namespace == namespace
+      end
+    end
+
     def get_cluster_service_plan(name)
       @client.get_cluster_service_plans.find do |p|
         p.metadata.name == name

@@ -86,7 +86,7 @@ module VCAP::CloudController
       b.metadata.namespace = service_binding.service_instance.space.guid
 
       b.spec.instanceRef = {}
-      b.spec.instanceRef.name = service_binding.service_instance.guid
+      b.spec.instanceRef.name = service_binding.service_instance.name
 
       begin
         p "K8SDEBUG: creating service binding with name #{b.metadata.namespace}/#{b.metadata.name}, instanceRef #{b.spec.instanceRef.name}"

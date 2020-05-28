@@ -39,7 +39,7 @@ module VCAP::CloudController
         srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
         service_instance_crd = srv_cat_client.get_service_instance(service_instance.name, service_instance.space.guid)
 
-        # update the service_broker in ccdb
+        # update the service_instance in ccdb
         p "K8SDEBUG: instance cachebust: bust required: updating service_instance in ccdb"
 
         service_instance.update(cache_id: service_instance_crd.metadata.resourceVersion)

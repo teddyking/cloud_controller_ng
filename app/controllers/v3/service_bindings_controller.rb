@@ -80,7 +80,52 @@ class ServiceBindingsController < ApplicationController
     head :no_content
   end
 
+  def put
+    message = ServiceBindingCreateMessage.new(hashed_params[:body]) # reuse create message but TODO create and use a update message 
+    unprocessable!(message.errors.full_messages) unless message.valid?
+
+    app, service_instance = ServiceBindingCreateFetcher.new.fetch(message.app_guid, message.service_instance_guid)
+    app_not_found! unless app
+    service_instance_not_found! unless service_instance
+    unauthorized! unless permission_queryer.can_write_to_space?(app.space.guid)
+
+    binding = VCAP::CloudController::ServiceBinding.find(guid: hashed_params[:guid])
+
+    # determine if the binding is up-to-date, if not fetch from k8s
+    conditional_bust(binding, hashed_params[:body][:cache_id])
+
+    render status: :ok, json: Presenters::V3::ServiceBindingPresenter.new(binding)
+  end
+
   private
+
+  def conditional_bust(binding, cache_id)
+    p "K8SDEBUG: binding cachebust: conditionally busting, cache_id: #{cache_id}, ccdb cache_id: #{binding.cache_id}"
+    if cache_id == binding.cache_id
+      p "K8SDEBUG: binding cachebust: no bust required"
+      return
+    end
+
+    p "K8SDEBUG: binding cachebust: bust required"
+
+    # fetch the binding crd from k8s
+    space_guid = binding.service_instance.space.guid
+    p "K8SDEBUG: binding cachebust: bust required: fetching binding #{space_guid}/#{binding.name}"
+    srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+    service_binding_crd = srv_cat_client.get_service_binding(binding.name, space_guid)
+
+    # fetch the secret containing the credentials from k8s
+    p "K8SDEBUG: binding cachebust: bust required: fetching secret #{space_guid}/#{binding.name}"
+    core_v1_client = CloudController::DependencyLocator.instance.core_v1_client
+    secret = core_v1_client.get_secret(binding.name, space_guid)
+
+    # update the service_binding in ccdb
+    p "K8SDEBUG: binding cachebust: bust required: updating binding in ccdb"
+    binding.update({'credentials' => secret.data})
+    binding.update(cache_id: service_binding_crd.metadata.resourceVersion)
+
+    p "K8SDEBUG: binding cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{binding.cache_id}"
+  end
 
   def service_instance_not_found!
     resource_not_found!(:service_instance)

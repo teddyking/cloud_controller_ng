@@ -11,5 +11,12 @@ module Kubernetes
     rescue Kubeclient::ResourceNotFoundError
       nil
     end
+
+    def get_secret(name, namespace)
+      @client.get_secrets.find do |s|
+        s.metadata.name == name &&
+        s.metadata.namespace == namespace
+      end
+    end
   end
 end
