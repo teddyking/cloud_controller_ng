@@ -82,10 +82,17 @@ class ServiceOfferingsController < ApplicationController
     p "K8SDEBUG: PUTing service_offering with guid: #{hashed_params[:guid]}"
     p "K8SDEBUG: hashed_params = #{hashed_params}"
 
-    broker_guid = hashed_params[:body][:broker_guid]
+    broker_name = hashed_params[:body][:broker_name]
     space_guid = hashed_params[:body][:space_guid]
 
-    service_broker = ServiceBroker.find(guid: broker_guid)
+    service_broker = ServiceBroker.find(name: broker_name)
+
+    # ensure the service_broker exists
+    if service_broker.nil?
+      p "K8SDEBUG: cannot create offering without service_broker"
+      unprocessable!("service_broker nil")
+    end
+
     service_offering = Service.find(guid: hashed_params[:guid], service_broker_id: service_broker.id)
 
     # create it in ccdb if it doesn't exist

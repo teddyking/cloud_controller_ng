@@ -85,12 +85,19 @@ class ServicePlansController < ApplicationController
     p "K8SDEBUG: PUTing service_plan with guid: #{hashed_params[:guid]}"
     p "K8SDEBUG: hashed_params = #{hashed_params}"
 
-    broker_guid = hashed_params[:body][:broker_guid]
+    broker_name = hashed_params[:body][:broker_name]
     service_guid = hashed_params[:body][:service_guid]
     space_guid = hashed_params[:body][:space_guid]
 
-    service_broker = ServiceBroker.find(guid: broker_guid)
+    service_broker = ServiceBroker.find(name: broker_name)
     service = Service.find(guid: service_guid, service_broker_id: service_broker.id)
+
+    # ensure the service_broker and service exist
+    if service_broker.nil? || service.nil?
+      p "K8SDEBUG: cannot create plan without service_broker and service"
+      unprocessable!("service_broker or service nil")
+    end
+
     service_plan = ServicePlan.find(guid: hashed_params[:guid], service_id: service.id)
 
     if service_plan == nil

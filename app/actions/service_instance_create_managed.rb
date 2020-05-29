@@ -39,7 +39,7 @@ module VCAP::CloudController
         service_event_repository.record_service_instance_event(:start_create, instance, message.audit_hash)
 
         # create crd
-        create_crd(attr)
+        create_crd(attr, instance.guid)
 
         creation_job = V3::CreateServiceInstanceJob.new(
           instance.guid,
@@ -56,16 +56,18 @@ module VCAP::CloudController
 
     private
 
-    def create_crd(attr)
+    def create_crd(attr, instance_guid)
       srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
 
       instance = Kubeclient::Resource.new
 
       instance.metadata = {}
+      instance.metadata.annotations = {}
       instance.spec = {}
 
       instance.metadata.name = attr[:name]
       instance.metadata.namespace = attr[:space_guid]
+      instance.metadata.annotations['cloudfoundry.org/instance_guid'] = instance_guid
 
       instance.spec.clusterServiceClassName = attr[:service_plan].service.guid
       instance.spec.clusterServicePlanName = attr[:service_plan].guid

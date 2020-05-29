@@ -80,11 +80,14 @@ module VCAP::CloudController
       b = Kubeclient::Resource.new
 
       b.metadata = {}
+      b.metadata.annotations = {}
       b.spec = {}
 
       b.metadata.name = service_binding.name
       b.metadata.namespace = service_binding.service_instance.space.guid
-
+      b.metadata.annotations['cloudfoundry.org/app_guid'] = service_binding.app.guid
+      b.metadata.annotations['cloudfoundry.org/service_instance_guid'] = service_binding.service_instance.guid
+      b.metadata.annotations['cloudfoundry.org/binding_guid'] = service_binding.guid
       b.spec.instanceRef = {}
       b.spec.instanceRef.name = service_binding.service_instance.name
 

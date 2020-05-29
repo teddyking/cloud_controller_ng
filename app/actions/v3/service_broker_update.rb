@@ -57,14 +57,14 @@ module VCAP::CloudController
       private
 
       def conditional_bust(broker, cache_id)
-        p "K8SDEBUG: cachebust: conditionally busting, cache_id: #{cache_id}, ccdb cache_id: #{broker.cache_id}"
+        p "K8SDEBUG: broker cachebust: conditionally busting, cache_id: #{cache_id}, ccdb cache_id: #{broker.cache_id}"
 
         if cache_id == broker.cache_id
-          p "K8SDEBUG: cachebust: no bust required"
+          p "K8SDEBUG: broker cachebust: no bust required"
           return
         end
 
-        p "K8SDEBUG: cachebust: bust required"
+        p "K8SDEBUG: broker cachebust: bust required"
 
         # fetch the broker crd from k8s
         srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
@@ -72,22 +72,20 @@ module VCAP::CloudController
         broker_crd = nil
         if broker.space_guid != nil
           # space-scoped broker
-          p "K8SDEBUG: cachebust: bust required: fetching namespace-scoped broker with name #{broker.name} and ns #{broker.space_guid}"
+          p "K8SDEBUG: broker cachebust: bust required: fetching namespace-scoped broker with name #{broker.name} and ns #{broker.space_guid}"
           broker_crd = srv_cat_client.get_broker(broker.name, broker.space_guid)
         else
           # global broker
-          p "K8SDEBUG: cachebust: bust required: fetching cluster broker with name #{broker.name}"
+          p "K8SDEBUG: broker cachebust: bust required: fetching cluster broker with name #{broker.name}"
           broker_crd = srv_cat_client.get_cluster_broker(broker.name)
         end
 
-        p "K8SDEBUG: cachebust: bust required: broker_crd: #{broker_crd}"
-
         # update the service_broker in ccdb
-        p "K8SDEBUG: cachebust: bust required: updating service_broker in ccdb"
+        p "K8SDEBUG: broker cachebust: bust required: updating service_broker in ccdb"
 
         broker.update(cache_id: broker_crd.metadata.resourceVersion)
 
-        p "K8SDEBUG: cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{broker.cache_id}"
+        p "K8SDEBUG: broker cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{broker.cache_id}"
       end
     end
   end

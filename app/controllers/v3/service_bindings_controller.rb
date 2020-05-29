@@ -121,7 +121,12 @@ class ServiceBindingsController < ApplicationController
 
     # update the service_binding in ccdb
     p "K8SDEBUG: binding cachebust: bust required: updating binding in ccdb"
-    binding.update({'credentials' => secret.data})
+
+    # grab and decode creds from secret
+    creds = secret.data
+    creds.each{|k,v| creds[k] = Base64.decode64(v)}
+
+    binding.update({'credentials' => creds})
     binding.update(cache_id: service_binding_crd.metadata.resourceVersion)
 
     p "K8SDEBUG: binding cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{binding.cache_id}"
