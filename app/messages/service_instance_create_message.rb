@@ -9,6 +9,7 @@ module VCAP::CloudController
       :relationships,
       :name,
       :tags,
+      :cache_id,
     ]
 
     validates_with RelationshipValidator

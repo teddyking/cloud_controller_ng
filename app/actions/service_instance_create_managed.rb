@@ -13,7 +13,7 @@ module VCAP::CloudController
       @service_event_repository = service_event_repository
     end
 
-    def create(message)
+    def create(message, guid)
       service_plan = ServicePlan.first(guid: message.service_plan_guid)
       raise InvalidManagedServiceInstance.new('Service plan not found.') unless service_plan
 
@@ -33,6 +33,11 @@ module VCAP::CloudController
       pollable_job = nil
       ManagedServiceInstance.db.transaction do
         instance = ManagedServiceInstance.new
+
+        if !guid.nil?
+          instance.guid = guid
+        end
+
         instance.save_with_new_operation(attr, last_operation)
         MetadataUpdate.update(instance, message)
 
@@ -58,6 +63,22 @@ module VCAP::CloudController
 
     def create_crd(attr, instance_guid)
       srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+
+      # first check to see if the serviceinstance already exists in k8s
+      # set the guid if it does and return
+      instance = srv_cat_client.get_service_instance(attr[:name], attr[:space_guid])
+      if !instance.nil?
+        p "K8SDEBUG: instance already exists - setting guid annotation"
+
+        if instance.metadata.annotations.nil?
+          p "K8SDEBUG: instance annotations did not exist"
+          instance.metadata.annotations = {}
+          instance.metadata.annotations['cloudfoundry.org/instance_guid'] = instance_guid
+          srv_cat_client.update_service_instance(instance)
+        end
+
+        return
+      end
 
       instance = Kubeclient::Resource.new
 

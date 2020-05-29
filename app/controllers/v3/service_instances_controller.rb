@@ -85,7 +85,7 @@ class ServiceInstancesV3Controller < ApplicationController
     when 'user-provided'
       create_user_provided(message)
     when 'managed'
-      create_managed(message, space: space)
+      create_managed(message, nil, space: space)
     end
   end
 
@@ -112,7 +112,22 @@ class ServiceInstancesV3Controller < ApplicationController
   end
 
   def put
-    service_instance = ServiceInstance.first(guid: hashed_params[:guid])
+    guid = hashed_params[:guid]
+    service_instance = ServiceInstance.first(guid: guid)
+
+    if service_instance.nil?
+      # the instance has been created in k8s, must be synced to CCDB
+      message = build_create_message(hashed_params[:body])
+
+      space = Space.first(guid: message.space_guid)
+      unprocessable_space! unless space && can_read_space?(space)
+      unauthorized! if space&.in_suspended_org? && !admin?
+      unauthorized! unless can_write_space?(space)
+      create_managed(message, guid, space: space)
+
+      return
+    end
+
     resource_not_found!(:service_instance) unless service_instance && can_read_service_instance?(service_instance)
     unauthorized! unless can_write_space?(service_instance.space)
 
@@ -215,7 +230,7 @@ class ServiceInstancesV3Controller < ApplicationController
     unprocessable!(e.message)
   end
 
-  def create_managed(message, space:)
+  def create_managed(message, guid, space:)
     service_event_repository = VCAP::CloudController::Repositories::ServiceEventRepository.new(user_audit_info)
     service_plan = ServicePlan.first(guid: message.service_plan_guid)
     unprocessable_service_plan! unless service_plan &&
@@ -224,7 +239,7 @@ class ServiceInstancesV3Controller < ApplicationController
 
     broker_unavailable! unless service_plan.service_broker.available?
 
-    job = ServiceInstanceCreateManaged.new(service_event_repository).create(message)
+    job = ServiceInstanceCreateManaged.new(service_event_repository).create(message, guid)
 
     head :accepted, 'Location' => url_builder.build_url(path: "/v3/jobs/#{job.guid}")
   rescue ServiceInstanceCreateManaged::InvalidManagedServiceInstance => e

@@ -51,6 +51,10 @@ module Kubernetes
       @client.create_service_instance(instance)
     end
 
+    def update_service_instance(instance)
+      @client.update_service_instance(instance)
+    end
+
     def get_service_instance(name, namespace)
       @client.get_service_instances.find do |i|
         i.metadata.name == name &&

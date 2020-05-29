@@ -4,7 +4,12 @@ require 'utils/hash_utils'
 module VCAP::CloudController
   class ServiceInstanceCreateManagedMessage < ServiceInstanceCreateMessage
     register_allowed_keys [
-      :parameters
+      :parameters,
+      :type,
+      :relationships,
+      :name,
+      :tags,
+      :cache_id,
     ]
 
     validates_with NoAdditionalKeysValidator
