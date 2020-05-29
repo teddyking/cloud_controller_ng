@@ -22,7 +22,7 @@ module VCAP::CloudController
       @manifest_triggered = manifest_triggered
     end
 
-    def create(app, service_instance, message, volume_mount_services_enabled, accepts_incomplete)
+    def create(app, service_instance, message, volume_mount_services_enabled, accepts_incomplete, guid)
       raise ServiceInstanceNotBindable unless service_instance.bindable?
       raise VolumeMountServiceDisabled if service_instance.volume_service? && !volume_mount_services_enabled
       raise SpaceMismatch unless bindable_in_space?(service_instance, app.space)
@@ -37,6 +37,10 @@ module VCAP::CloudController
         name:             message.name,
       )
       raise InvalidServiceBinding.new(binding.errors.full_messages.join(' ')) unless binding.valid?
+
+      if !guid.nil?
+        binding.guid = guid
+      end
 
       create_crd(binding)
       binding.save
@@ -76,6 +80,22 @@ module VCAP::CloudController
 
     def create_crd(service_binding)
       srv_cat_client = CloudController::DependencyLocator.instance.service_catalog_client
+
+      # first check to see if the servicebinding already exists in k8s
+      # set the guid if it does and return
+      binding = srv_cat_client.get_service_binding(service_binding.name, service_binding.service_instance.space.guid)
+      if !binding.nil?
+        p "K8SDEBUG: binding already exists - setting guid annotation"
+
+        if binding.metadata.annotations.nil?
+          p "K8SDEBUG: binding annotations did not exist"
+          binding.metadata.annotations = {}
+          binding.metadata.annotations['cloudfoundry.org/binding_guid'] = service_binding.guid
+          srv_cat_client.update_service_instance(binding)
+        end
+
+        return
+      end
 
       b = Kubeclient::Resource.new
 

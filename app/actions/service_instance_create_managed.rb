@@ -73,9 +73,10 @@ module VCAP::CloudController
         if instance.metadata.annotations.nil?
           p "K8SDEBUG: instance annotations did not exist"
           instance.metadata.annotations = {}
-          instance.metadata.annotations['cloudfoundry.org/instance_guid'] = instance_guid
-          srv_cat_client.update_service_instance(instance)
         end
+
+        instance.metadata.annotations['cloudfoundry.org/instance_guid'] = instance_guid
+        srv_cat_client.update_service_instance(instance)
 
         return
       end

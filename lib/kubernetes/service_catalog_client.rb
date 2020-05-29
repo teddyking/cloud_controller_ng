@@ -66,6 +66,10 @@ module Kubernetes
       @client.create_service_binding(binding)
     end
 
+    def update_service_binding(binding)
+      @client.update_service_binding(binding)
+    end
+
     def get_service_binding(name, namespace)
       @client.get_service_bindings.find do |b|
         b.metadata.name == name &&

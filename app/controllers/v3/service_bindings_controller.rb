@@ -11,7 +11,7 @@ require 'cloud_controller/telemetry_logger'
 class ServiceBindingsController < ApplicationController
   include AppSubResource
 
-  def create
+  def create(guid=nil)
     message = ServiceBindingCreateMessage.new(hashed_params[:body])
     unprocessable!(message.errors.full_messages) unless message.valid?
 
@@ -22,7 +22,7 @@ class ServiceBindingsController < ApplicationController
 
     accepts_incomplete = false
     begin
-      service_binding = ServiceBindingCreate.new(user_audit_info).create(app, service_instance, message, volume_services_enabled?, accepts_incomplete)
+      service_binding = ServiceBindingCreate.new(user_audit_info).create(app, service_instance, message, volume_services_enabled?, accepts_incomplete, guid)
       TelemetryLogger.v3_emit(
         'bind-service',
         {
@@ -89,7 +89,14 @@ class ServiceBindingsController < ApplicationController
     service_instance_not_found! unless service_instance
     unauthorized! unless permission_queryer.can_write_to_space?(app.space.guid)
 
-    binding = VCAP::CloudController::ServiceBinding.find(guid: hashed_params[:guid])
+    guid = hashed_params[:guid]
+    binding = VCAP::CloudController::ServiceBinding.find(guid: guid)
+
+    if binding.nil?
+      # the binding has been created in k8s, must be synced to CCDB
+
+      create(guid)
+    end
 
     # determine if the binding is up-to-date, if not fetch from k8s
     conditional_bust(binding, hashed_params[:body][:cache_id])
