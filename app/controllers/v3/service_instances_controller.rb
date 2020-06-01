@@ -162,13 +162,21 @@ class ServiceInstancesV3Controller < ApplicationController
     spaces = Space.where(guid: message.guids)
     check_spaces_exist_and_are_writeable!(service_instance, message.guids, spaces)
 
-    share = ServiceInstanceShare.new
-    share.create(service_instance, spaces, user_audit_info)
+    p "K8SDEBUG: user_audit_info = #{user_audit_info}"
+    #share = ServiceInstanceShare.new
+    #share.create(service_instance, spaces, user_audit_info)
+
+    # update the service_instance CRD with the new space_guid
+    update_crd_share_to_spaces(spaces)
 
     render status: :ok, json: Presenters::V3::ToManyRelationshipPresenter.new(
       "service_instances/#{service_instance.guid}", service_instance.shared_spaces, 'shared_spaces', build_related: false)
   rescue VCAP::CloudController::ServiceInstanceShare::Error => e
     unprocessable!(e.message)
+  end
+
+  def update_crd_share_to_spaces(spaces)
+
   end
 
   def unshare_service_instance

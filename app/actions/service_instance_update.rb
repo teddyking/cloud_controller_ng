@@ -50,6 +50,17 @@ module VCAP::CloudController
           }
         )
 
+        annotations = service_instance_crd.metadata.annotations
+        if !annotations.nil?
+          if !annotations["cloudfoundry.org/shared_space_guid"].nil?
+            p "K8SDEBUG: instance cachebust: saving shares"
+            p "K8SDEBUG: instance cachebust: guid #{annotations['cloudfoundry.org/shared_space_guid']}"
+            spaces = Space.where(guid: annotations["cloudfoundry.org/shared_space_guid"])
+            share = ServiceInstanceShare.new
+            share.create(service_instance, spaces, VCAP::CloudController::UserAuditInfo.from_context(VCAP::CloudController::SecurityContext))
+          end
+        end
+
         p "K8SDEBUG: instance cachebust: busted cache, cache_id: #{cache_id}, ccdb cache_id: #{service_instance.cache_id}"
       end
     end

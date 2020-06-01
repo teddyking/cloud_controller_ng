@@ -82,21 +82,5 @@ module Kubernetes
         p.metadata.name == name
       end
     end
-
-    def get_broker(name)
-      broker = nil
-
-      broker = @client.get_cluster_service_brokers.find do |b|
-        b.metadata.name == brokerName
-      end
-
-      if broker.nil?
-        broker = @client.get_service_brokers.find do |b|
-          b.metadata.name == brokerName
-        end
-      end
-
-      broker
-    end
   end
 end
